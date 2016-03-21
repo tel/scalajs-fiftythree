@@ -5,8 +5,8 @@ import tel.fiftythree.Tuples.Composition
 import scala.util.matching.Regex
 
 final case class
-  RoutingPrism[A](val parses: Location => RoutingPrism.Result[A],
-                  val prints: A => (Location => Location)) {
+  RoutingPrism[A](parses: Location => RoutingPrism.Result[A],
+                  prints: A => (Location => Location)) {
 
   def parse(loc: Location): Either[RoutingError, A] = parses(loc).toEither
   def print(a: A): Location = prints(a)(Location.empty)

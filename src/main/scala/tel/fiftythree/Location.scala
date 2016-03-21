@@ -61,7 +61,7 @@ case class Location(segments: List[String] = List(),
 
 object Location {
   def fromPathString(s: String): Location =
-    Location(segments = s.split('/') filter(_.nonEmpty) toList)
+    Location(segments = s.split('/').filter(_.nonEmpty).toList)
 
   def empty: Location = Location()
 }
