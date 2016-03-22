@@ -1,5 +1,8 @@
 package tel.fiftythree
 
+import scala.scalajs.js
+import scala.scalajs.js.annotation.JSName
+
 /**
   * Representation of the current browser location. For compatibility with
   * Hash Routing this does not include a fragment component (after all, the
@@ -66,8 +69,62 @@ case class Location(segments: List[String] = List(),
 }
 
 object Location {
+
+  /* TODO: Do we need to URL decode the pieces here? Probably! */
   def fromPathString(s: String): Location =
     Location(segments = s.split('/').filter(_.nonEmpty).toList)
 
+  /**
+    * The empty location has no path and no search.
+    */
   def empty: Location = Location()
+
+  /**
+    * Decode a `Location` from the current `window.location` value
+    */
+  def currentLocation(): Location = {
+    val theLocation: Js.WindowLocation = Js.Window.location
+    Location.fromPathString(theLocation.pathname).copy(
+      query = Js.parseSearch(theLocation.search)
+    )
+  }
+
+  /**
+    * Javascript interop types and functions
+    */
+  private object Js {
+
+    @JSName("window")
+    @js.native
+    object Window extends js.Object {
+      val location: WindowLocation = js.native
+    }
+
+    trait WindowLocation {
+      val href: String
+      val protocol: String
+      val host: String
+      val hostname: String
+      val port: String
+      val pathname: String
+      val search: String
+      val hash: String
+      val username: String
+      val password: String
+      val origin: String
+    }
+
+    /* TODO: Do we need to URL decode the pieces here? Probably! */
+    def parseSearch(search: String): Map[String, Option[String]] = {
+      val withoutQMark = search.drop(1)
+      withoutQMark.split("&").map { seg =>
+        val pieces = seg.split("=")
+        if (pieces.length == 1)
+          (pieces(0), None)
+        else
+          (pieces(0), Some(pieces(1)))
+      }.toMap[String, Option[String]]
+    }
+  }
+
 }
