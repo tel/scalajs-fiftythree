@@ -8,9 +8,34 @@ import scala.util.matching.Regex
 
 object Routes {
 
-  trait DSL[Router[_]] {
+  /**
+    * A Representation is essentially `(String => Either[Error, A], A => String)`
+    * such that parse is a retract of print, e.g. `parse(print(x)) = x`. It
+    * says that some subset of `String` corresponds exactly to a set of
+    * values `A`.
+    */
+  type Representation[A] = Prism[String, A]
 
-    import Prism.Representation._
+  /**
+    * A set of standard representations available in the `Routes` DSL.
+    */
+  trait Representations {
+    import scala.util.control.Exception._
+
+    implicit val stringHasLiteralRepresentation: Representation[String] =
+      Prism[String, String](identity, Some(_))
+
+    implicit val intHasRepresentation: Representation[Int] =
+      Prism(
+        inject = (x: Int) => x.toString,
+        view = repr => {
+          val catcher: Catch[Int] = catching(classOf[NumberFormatException])
+          catcher opt Integer.valueOf(repr)
+        }
+      )
+  }
+
+  trait DSL[Router[_]] extends Representations {
 
     /** Parses successfully only if we're at the end of the path */
     def here: Router[Unit]
