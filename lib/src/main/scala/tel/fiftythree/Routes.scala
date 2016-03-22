@@ -10,6 +10,8 @@ object Routes {
 
   trait DSL[Router[_]] {
 
+    import Prism.Representation._
+
     /** Parses successfully only if we're at the end of the path */
     def here: Router[Unit]
 
