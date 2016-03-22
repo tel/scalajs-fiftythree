@@ -10,6 +10,15 @@ object Routes {
 
   trait DSL[Router[_]] {
 
+    /** Parses successfully only if we're at the end of the path */
+    def here: Router[Unit]
+
+    /**
+      * Router which always succeeds returning whatever part of the
+      * `Location` remains
+      */
+    def notFound: Router[Location]
+
     /** Matches an exact string */
     def literal(repr: String): Router[Unit] =
       core.map[String, Unit](_ => (), _ => repr)(regex(repr.r))
@@ -42,6 +51,11 @@ object Routes {
       def /[B](rb: Router[B])(implicit c: Composition[A, B]): Router[c.C] =
         // NOTE: This shows as an error in IntelliJ, but is actually correct :(
         core.pairFlat(ra, rb)(c)
+
+      def |(other: Router[A]): Router[A] = core.alt(ra, other)
+
+      def ~>[S](prism: Prism[S, A]): Router[S] =
+        core.mapIf((a: A) => Some(prism.inject(a)), prism.view)(ra)
     }
 
   }
@@ -56,10 +70,17 @@ object Routes {
   trait Core[Router[_]] {
 
     /**
+      * Slightly more general than `map`, `mapIf` lets either direction of
+      * the mapping fail.
+      */
+    def mapIf[A, B](f: A => Option[B], g: B => Option[A])(r: Router[A]): Router[B]
+
+    /**
       * Given a transform and its inverse (really, retraction) we can transform
       * a Router producing one type to a different router.
       */
-    def map[A, B](f: A => B, g: B => A)(r: Router[A]): Router[B]
+    def map[A, B](f: A => B, g: B => A)(r: Router[A]): Router[B] =
+      mapIf((a: A) => Some(f(a)), (b: B) => Some(g(b)))(r)
 
     /**
       * Inject a value into a router without examining or consuming the

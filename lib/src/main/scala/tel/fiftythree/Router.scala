@@ -1,5 +1,6 @@
 package tel.fiftythree
 
+import tel.fiftythree.RoutingError.ExpectedEOL
 import tel.fiftythree.Tuples.Composition
 
 import scala.util.matching.Regex
@@ -27,7 +28,13 @@ object Router {
 
   object Core extends Routes.Core[Router] {
 
-    def map[A, B](f: A => B, g: B => A)(r: Router[A]): Router[B] = {
+    def mapIf[A, B](f: (A) => Option[B], g: (B) => Option[A])(r: Router[A]): Router[B] =
+      Router(
+        parses = loc => r.parses(loc) mapIf f,
+        prints = b => loc => g(b) flatMap (a => r.prints(a)(loc))
+      )
+
+    override def map[A, B](f: A => B, g: B => A)(r: Router[A]): Router[B] = {
       r.copy(
         parses = (loc: Location) => r.parses(loc) map f,
         prints = g andThen r.prints
@@ -36,7 +43,7 @@ object Router {
 
     def unit[A](a: A): Router[A] =
       Router(
-        parses = RoutingResult(a, _),
+        parses = Success(a, _),
         prints = (_: A) => Some(_)
       )
 
@@ -51,7 +58,7 @@ object Router {
         parses = (loc0: Location) =>
           ra parses loc0 flatMapish {
             case (a, loc1) => rb parses loc1 flatMapish {
-              case (b, loc2) => RoutingResult(c.smash(a, b), loc2)
+              case (b, loc2) => Success(c.smash(a, b), loc2)
             }
           },
 
@@ -67,8 +74,9 @@ object Router {
 
     def alt[A](r1: Router[A], r2: => Router[A]): Router[A] = {
 
-      def parsesAlt(loc: Location): RoutingResult[A] =
+      def parsesAlt(loc: Location): RoutingResult[A] = {
         r1.parses(loc) orElse r2.parses(loc)
+      }
 
       def printsAlt(a: A)(loc: Location): Option[Location] =
         r1.prints(a)(loc) orElse r2.prints(a)(loc)
@@ -78,6 +86,7 @@ object Router {
         prints = printsAlt
       )
     }
+
   }
 
   object DSL extends Routes.DSL[Router] {
@@ -167,6 +176,36 @@ object Router {
         prints = printsRest
       )
     }
+
+    def here: Router[Unit] = {
+
+      def parsesHere(loc: Location): RoutingResult[Unit] =
+        if (loc.isEmpty)
+          Success((), loc)
+        else
+          Failure(ExpectedEOL)
+
+      def printsHere(a: Unit)(loc: Location): Option[Location] =
+        if (loc.isEmpty)
+          Some(loc)
+        else
+          None
+
+      Router(
+        parses = parsesHere,
+        prints = printsHere
+      )
+    }
+
+    def notFound: Router[Location] =
+      Router(
+        parses = loc => Success(loc, Location.empty),
+        prints = a => loc =>
+          if (loc.isEmpty)
+            Some(a)
+          else
+            None
+      )
   }
 
 }
