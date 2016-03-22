@@ -30,13 +30,13 @@ object Routes {
       * Convenient interface for `represented` where we use an implicit
       * `Representation` value. Same as `represented[A](implicitly)`.
       */
-    def some[A: Representation]: Router[A] = represented(implicitly)
+    def some[A: Prism.Representation]: Router[A] = represented(implicitly)
 
     /**
       * Provided a `Representation` of some type as a String, we check to see
       * if the next segment of the path matches.
       */
-    def represented[A](repr: Representation[A]): Router[A]
+    def represented[A](repr: Prism.Representation[A]): Router[A]
 
     /** Matches any non-empty string */
     def string: Router[String] = some

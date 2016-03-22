@@ -144,22 +144,22 @@ object Router {
 
     val core: Routes.Core[Router] = Core
 
-    def represented[A](rep: Representation[A]): Router[A] = {
+    def represented[A](rep: Prism.Representation[A]): Router[A] = {
 
       def parsesRepr(loc: Location): RoutingResult[A] =
         loc.uncons match {
           case None => Failure(RoutingError.UnexpectedEOL)
-          case Some((seg, newLoc)) => rep.parse(seg) match {
-            case Left(error) =>
-              Failure(RoutingError.NoParse(found = seg, reason = Some(error)))
-            case Right(value) =>
+          case Some((seg, newLoc)) => rep.view(seg) match {
+            case None =>
+              Failure(RoutingError.NoParse(found = seg, reason = None))
+            case Some(value) =>
               Success(value, newLoc)
           }
         }
 
       Router(
         parses = parsesRepr,
-        prints = a => l => Some(l.cons(rep.print(a)))
+        prints = a => l => Some(l.cons(rep.inject(a)))
       )
     }
 
