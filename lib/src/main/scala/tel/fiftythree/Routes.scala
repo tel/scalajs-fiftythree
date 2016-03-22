@@ -54,7 +54,7 @@ object Routes {
 
       def |(other: Router[A]): Router[A] = core.alt(ra, other)
 
-      def ~>[S](prism: Prism[S, A]): Router[S] =
+      def -->[S](prism: Prism[S, A]): Router[S] =
         core.mapIf((a: A) => Some(prism.inject(a)), prism.view)(ra)
     }
 
