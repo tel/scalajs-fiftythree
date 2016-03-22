@@ -9,6 +9,12 @@ case class Location(segments: List[String] = List(),
                     query: Map[String, Option[String]] = Map()) {
 
   /**
+    * A `Location` is empty if it has no (remaining) segments. This
+    * defines a "complete" parse.
+    */
+  def isEmpty: Boolean = segments.isEmpty
+
+  /**
     * "Un"-conses the top path segment off the location returning an updated
     * location. May fail if we're at the root path.
     */

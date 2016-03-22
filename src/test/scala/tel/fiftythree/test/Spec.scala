@@ -19,6 +19,7 @@ object RoutesTests extends TestSuite {
     val emptyLoc = Location.fromPathString("/")
     val fooLoc = Location.fromPathString("/foo")
     val barLoc = Location.fromPathString("/bar")
+    val foobarLoc = Location.fromPathString("/foo/bar")
 
     'Locations {
 
@@ -34,6 +35,10 @@ object RoutesTests extends TestSuite {
         assert(barLoc.segments == List("bar"))
       }
 
+      'FooBarLoc - {
+        assert(foobarLoc.segments == List("foo", "bar"))
+      }
+
     }
 
     'Parsing {
@@ -44,7 +49,7 @@ object RoutesTests extends TestSuite {
         def apply[R[_]](dsl: Routes.DSL[R]) = {
           import dsl._
 
-          literal("foo")
+          literal("foo") / literal("bar")
         }
       })
 
@@ -59,8 +64,13 @@ object RoutesTests extends TestSuite {
           case Left(ExpectedSegment("foo")) =>
         }
       }
-      'SegmentMatch - {
+      'IncompleteParse - {
         assertMatch(rp.parse(fooLoc)) {
+          case Left(ExpectedEOL) =>
+        }
+      }
+      'SegmentMatch - {
+        assertMatch(rp.parse(foobarLoc)) {
           case Right(()) =>
         }
       }

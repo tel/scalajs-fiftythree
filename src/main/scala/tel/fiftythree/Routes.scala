@@ -3,6 +3,7 @@ package tel.fiftythree
 import tel.fiftythree.Tuples.Composition
 
 import scala.language.higherKinds
+import scala.language.implicitConversions
 import scala.util.matching.Regex
 
 object Routes {
@@ -31,11 +32,15 @@ object Routes {
     /** Matches any non-empty string */
     def string: Router[String] = some
 
+    /** Matches all remaining segments */
+    def * : Router[List[String]]
+
     /** Core semantic combinators */
     val core: Core[Router]
 
     implicit class DslInfixOperations[A](ra: Router[A]) {
-      def ~[B](rb: Router[B])(implicit c: Composition[A, B]) =
+      def /[B](rb: Router[B])(implicit c: Composition[A, B]): Router[c.C] =
+        // This shows as an error in IntelliJ, but is actually correct :(
         core.pairFlat(ra, rb)(c)
     }
 

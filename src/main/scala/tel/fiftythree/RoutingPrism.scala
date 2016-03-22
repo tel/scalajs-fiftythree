@@ -5,47 +5,53 @@ import tel.fiftythree.Tuples.Composition
 import scala.util.matching.Regex
 
 final case class
-  RoutingPrism[A](parses: Location => RoutingPrism.Result[A],
+  RoutingPrism[A](parses: Location => Result[A],
                   prints: A => (Location => Location)) {
 
-  def parse(loc: Location): Either[RoutingError, A] = parses(loc).toEither
+  def parse(loc: Location): Either[RoutingError, A] =
+    parses(loc) match {
+      case Failure(err) => Left(err)
+      case Success(value: A, finalLoc) =>
+        if (finalLoc.isEmpty) Right(value) else Left(RoutingError.ExpectedEOL)
+    }
   def print(a: A): Location = prints(a)(Location.empty)
+}
+
+private sealed trait Result[A] {
+  val success: Boolean
+  val failure: Boolean = !success
+  def map[B](f: A => B): Result[B]
+  def flatMapish[B](f: (A, Location) => Result[B]): Result[B]
+  def toEither: Either[RoutingError, A]
+}
+private final case class Failure[A](error: RoutingError) extends Result[A] {
+  val success = false
+  def map[B](f: A => B) = copy(error)
+  def flatMapish[B](f: (A, Location) => Result[B]) = copy(error)
+  lazy val toEither = Left(error)
+}
+private final case class Success[A](value: A, location: Location) extends
+  Result[A] {
+  val success = true
+  def map[B](f: A => B) = copy(value = f(value))
+  def flatMapish[B](f: (A, Location) => Result[B]) = f(value, location)
+  lazy val toEither = Right(value)
+}
+
+private object Result {
+  /** Success biased */
+  def apply[A](value: A, location: Location): Result[A] =
+    Success(value, location)
 }
 
 object RoutingPrism {
 
-  sealed trait Result[A] {
-    val success: Boolean
-    val failure: Boolean = !success
-    def map[B](f: A => B): Result[B]
-    def flatMapish[B](f: (A, Location) => Result[B]): Result[B]
-    def toEither: Either[RoutingError, A]
-  }
-  final case class Failure[A](error: RoutingError) extends Result[A] {
-    val success = false
-    def map[B](f: A => B) = copy(error)
-    def flatMapish[B](f: (A, Location) => Result[B]) = copy(error)
-    lazy val toEither = Left(error)
-  }
-  final case class Success[A](value: A, location: Location) extends
-    Result[A] {
-    val success = true
-    def map[B](f: A => B) = copy(value = f(value))
-    def flatMapish[B](f: (A, Location) => Result[B]) = f(value, location)
-    lazy val toEither = Right(value)
-  }
-
-  object Result {
-    /** Success biased */
-    def apply[A](value: A, location: Location): Result[A] =
-      Success(value, location)
-  }
 
   object Core extends Routes.Core[RoutingPrism] {
 
-    def map[A, B](f: (A) => B, g: (B) => A)(r: RoutingPrism[A]): RoutingPrism[B] = {
+    def map[A, B](f: A => B, g: B => A)(r: RoutingPrism[A]): RoutingPrism[B] = {
       r.copy(
-        parses = (loc: Location) => r parses loc map f,
+        parses = (loc: Location) => r.parses(loc) map f,
         prints = g andThen r.prints
       )
     }
@@ -146,12 +152,23 @@ object RoutingPrism {
               Success(value, newLoc)
           }
         }
-      def printsRepr(a: A)(loc: Location): Location =
-        loc.cons(rep.print(a))
 
       RoutingPrism(
         parses = parsesRepr,
-        prints = printsRepr
+        prints = a => _.cons(rep.print(a))
+      )
+    }
+
+    def * : RoutingPrism[List[String]] = {
+
+      def parsesRest(loc: Location): Result[List[String]] =
+        Success(loc.segments, loc.copy(segments = List()))
+      def printsRest(a: List[String])(loc: Location): Location =
+        loc.copy(segments = a)
+
+      RoutingPrism(
+        parses = parsesRest,
+        prints = printsRest
       )
     }
   }
