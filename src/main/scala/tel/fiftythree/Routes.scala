@@ -82,5 +82,11 @@ object Routes {
       */
     def pair[A, B](ra: Router[A], rb: Router[B]): Router[(A, B)] = pairFlat(ra, rb)
 
+    /**
+      * Select sequentially from two `Router`s. If `r1` succeeds then `r2` is
+      * not tried. If `r1` fails then this is the same as `r2`.
+      */
+    def alt[A](r1: Router[A], r2: => Router[A]): Router[A]
+
   }
 }

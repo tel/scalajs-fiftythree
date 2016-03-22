@@ -7,12 +7,12 @@ import scala.language.higherKinds
 
 object RoutesTests extends TestSuite {
 
-  trait WithRoutes[A] {
-    def apply[R[_]](dsl: Routes.DSL[R]): R[A]
+  val FooBarMatcher = new RouteConfig[Unit] {
+    def routes[R[_]](dsl: Routes.DSL[R]): R[Unit] = {
+      import dsl._
+      literal("foo") / literal("bar")
+    }
   }
-
-  def reify[A](withRoutes: WithRoutes[A]): RoutingPrism[A] =
-    withRoutes(RoutingPrism.DSL)
 
   def tests = this {
 
@@ -50,39 +50,38 @@ object RoutesTests extends TestSuite {
 
       import RoutingError._
 
-      val rp = reify(new WithRoutes[Unit] {
-        def apply[R[_]](dsl: Routes.DSL[R]) = {
-          import dsl._
-
-          literal("foo") / literal("bar")
-        }
-      })
-
-
       "/ is too short" - {
-        assertMatch(rp.parse(emptyLoc)) {
+        assertMatch(FooBarMatcher.parse(emptyLoc)) {
           case Left(UnexpectedEOL) =>
         }
       }
       "/bar starts out wrong" - {
-        val parse = rp.parse(barLoc)
+        val parse = FooBarMatcher.parse(barLoc)
         val result = Left(ExpectedSegment("foo"))
         assert(parse == result)
       }
       "/foo ends too soon" - {
-        val parse = rp.parse(fooLoc)
+        val parse = FooBarMatcher.parse(fooLoc)
         val result = Left(UnexpectedEOL)
         assert(parse == result)
       }
       "/foo/bar/baz is too long" - {
-        val parse = rp.parse(foobarbazLoc)
+        val parse = FooBarMatcher.parse(foobarbazLoc)
         val result = Left(ExpectedEOL)
         assert(parse == result)
       }
       "/foo/bar is just right" - {
-        assert(rp.parse(foobarLoc) == Right(()))
+        assert(FooBarMatcher.parse(foobarLoc) == Right(()))
       }
 
+    }
+
+    "FooBarMatcher printing: /foo/bar" - {
+      // Since our result type is just `Unit` we've lost too much information
+      // to do interesting printing results.
+      val print: Option[Location] = FooBarMatcher.print(())
+      val result: Option[Location] = Some(Location.fromPathString("/foo/bar"))
+      assert(print == result)
     }
 
   }
