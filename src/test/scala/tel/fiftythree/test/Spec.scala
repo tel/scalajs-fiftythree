@@ -22,31 +22,31 @@ object RoutesTests extends TestSuite {
     val foobarLoc = Location.fromPathString("/foo/bar")
     val foobarbazLoc = Location.fromPathString("/foo/bar/baz")
 
-    'Locations {
+    "Locations parse properly" - {
 
-      'EmptyLoc - {
+      "/" - {
         assert(emptyLoc.segments == List())
       }
 
-      'FooLoc - {
+      "/foo" - {
         assert(fooLoc.segments == List("foo"))
       }
 
-      'BarLoc - {
+      "/bar" - {
         assert(barLoc.segments == List("bar"))
       }
 
-      'FooBarLoc - {
+      "/foo/bar" - {
         assert(foobarLoc.segments == List("foo", "bar"))
       }
 
-      'FooBarBazLoc - {
+      "/foo/bar/baz" - {
         assert(foobarbazLoc.segments == List("foo", "bar", "baz"))
       }
 
     }
 
-    'Parsing {
+    "basic parsing: /foo/bar" - {
 
       import RoutingError._
 
@@ -59,27 +59,27 @@ object RoutesTests extends TestSuite {
       })
 
 
-      'NoSegmentFailure - {
+      "/ is too short" - {
         assertMatch(rp.parse(emptyLoc)) {
           case Left(UnexpectedEOL) =>
         }
       }
-      'WrongSegmentFailure - {
+      "/bar starts out wrong" - {
         val parse = rp.parse(barLoc)
         val result = Left(ExpectedSegment("foo"))
         assert(parse == result)
       }
-      'IncompleteParse - {
+      "/foo ends too soon" - {
         val parse = rp.parse(fooLoc)
         val result = Left(UnexpectedEOL)
         assert(parse == result)
       }
-      'EarlyMatchShouldFail - {
+      "/foo/bar/baz is too long" - {
         val parse = rp.parse(foobarbazLoc)
         val result = Left(ExpectedEOL)
         assert(parse == result)
       }
-      'SegmentMatch - {
+      "/foo/bar is just right" - {
         assert(rp.parse(foobarLoc) == Right(()))
       }
 
