@@ -4,33 +4,33 @@ import tel.fiftythree.Tuples.Composition
 
 import scala.util.matching.Regex
 
-final case class
+private[fiftythree] final case class
   RoutingPrism[A](parses: Location => Result[A],
                   prints: A => (Location => Location)) {
 
   def parse(loc: Location): Either[RoutingError, A] =
     parses(loc) match {
       case Failure(err) => Left(err)
-      case Success(value: A, finalLoc) =>
+      case Success(value, finalLoc) =>
         if (finalLoc.isEmpty) Right(value) else Left(RoutingError.ExpectedEOL)
     }
   def print(a: A): Location = prints(a)(Location.empty)
 }
 
-private sealed trait Result[A] {
+private[fiftythree] sealed trait Result[A] {
   val success: Boolean
   val failure: Boolean = !success
   def map[B](f: A => B): Result[B]
   def flatMapish[B](f: (A, Location) => Result[B]): Result[B]
   def toEither: Either[RoutingError, A]
 }
-private final case class Failure[A](error: RoutingError) extends Result[A] {
+private[fiftythree] final case class Failure[A](error: RoutingError) extends Result[A] {
   val success = false
   def map[B](f: A => B) = copy(error)
   def flatMapish[B](f: (A, Location) => Result[B]) = copy(error)
   lazy val toEither = Left(error)
 }
-private final case class Success[A](value: A, location: Location) extends
+private[fiftythree] final case class Success[A](value: A, location: Location) extends
   Result[A] {
   val success = true
   def map[B](f: A => B) = copy(value = f(value))
@@ -38,7 +38,7 @@ private final case class Success[A](value: A, location: Location) extends
   lazy val toEither = Right(value)
 }
 
-private object Result {
+private[fiftythree] object Result {
   /** Success biased */
   def apply[A](value: A, location: Location): Result[A] =
     Success(value, location)

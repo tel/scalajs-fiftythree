@@ -40,7 +40,7 @@ object Routes {
 
     implicit class DslInfixOperations[A](ra: Router[A]) {
       def /[B](rb: Router[B])(implicit c: Composition[A, B]): Router[c.C] =
-        // This shows as an error in IntelliJ, but is actually correct :(
+        // NOTE: This shows as an error in IntelliJ, but is actually correct :(
         core.pairFlat(ra, rb)(c)
     }
 

@@ -20,6 +20,7 @@ object RoutesTests extends TestSuite {
     val fooLoc = Location.fromPathString("/foo")
     val barLoc = Location.fromPathString("/bar")
     val foobarLoc = Location.fromPathString("/foo/bar")
+    val foobarbazLoc = Location.fromPathString("/foo/bar/baz")
 
     'Locations {
 
@@ -37,6 +38,10 @@ object RoutesTests extends TestSuite {
 
       'FooBarLoc - {
         assert(foobarLoc.segments == List("foo", "bar"))
+      }
+
+      'FooBarBazLoc - {
+        assert(foobarbazLoc.segments == List("foo", "bar", "baz"))
       }
 
     }
@@ -60,19 +65,22 @@ object RoutesTests extends TestSuite {
         }
       }
       'WrongSegmentFailure - {
-        assertMatch(rp.parse(barLoc)) {
-          case Left(ExpectedSegment("foo")) =>
-        }
+        val parse = rp.parse(barLoc)
+        val result = Left(ExpectedSegment("foo"))
+        assert(parse == result)
       }
       'IncompleteParse - {
-        assertMatch(rp.parse(fooLoc)) {
-          case Left(ExpectedEOL) =>
-        }
+        val parse = rp.parse(fooLoc)
+        val result = Left(UnexpectedEOL)
+        assert(parse == result)
+      }
+      'EarlyMatchShouldFail - {
+        val parse = rp.parse(foobarbazLoc)
+        val result = Left(ExpectedEOL)
+        assert(parse == result)
       }
       'SegmentMatch - {
-        assertMatch(rp.parse(foobarLoc)) {
-          case Right(()) =>
-        }
+        assert(rp.parse(foobarLoc) == Right(()))
       }
 
     }
